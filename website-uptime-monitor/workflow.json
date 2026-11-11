@@ -1,0 +1,548 @@
+{
+  "name": "Website Uptime Monitor + Weekly Report",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const items = [];\n\nfor (const item of $input.all()) {\n  const now = new Date();\n  const istTime = new Date(now.getTime() + (5.5 * 60 * 60 * 1000));\n  const currentHour = istTime.getHours();\n\n  // quiet hours check\n  const isQuietHour = currentHour >= 23 || currentHour < 7;\n\n  items.push({\n    json: {\n      ...item.json,         // keep previous fields\n      isQuietHour,          // add quiet hour flag\n      currentHour,\n      istTime: istTime.toISOString()\n    }\n  });\n}\n\nreturn items;\n"
+      },
+      "id": "7257bac2-6efe-41e1-bf37-712a95e095d0",
+      "name": "Check Quiet Hours",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -368,
+        1168
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "1",
+              "leftValue": "={{$json.isQuietHour}}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "9586c101-0ace-4602-ba57-b7203d966dd0",
+      "name": "Check Not Quiet Hours",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -144,
+        1168
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "alerts@example.com",
+        "subject": "=🚨 Website Down Alert - {{$json.url}} ",
+        "message": "=<h2>🚨 Website Downtime Alert</h2>|<p><strong>URL:</strong> {{$json.url}}  </p><p><strong>Status:</strong> {{$json.status}}</p><p><strong>Error:</strong> {{$json.error}}</p><p><strong>HTTP Code:</strong> {{$json.http_code}}</p><p><strong>Response Time:</strong> {{$json.response_ms}}ms</p><p><strong>Time (IST):</strong> {{$json.ts_ist}}</p><p><strong>Final URL:</strong> {{$json.final_url}}</p><hr><p><small>This is an automated alert from your website monitoring system.</small></p><p><small>Current IST Time: {{$json.istTime}}</small></p>",
+        "options": {}
+      },
+      "id": "c1af4ed7-3310-467a-95b9-89595b6c7566",
+      "name": "Send Alert Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        80,
+        1168
+      ],
+      "webhookId": "583d1d9f-9396-412a-a9cb-65166cfb87cb",
+      "credentials": {
+        "gmailOAuth2": {
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"status\"]}}",
+              "operation": "notEqual",
+              "value2": "Up"
+            }
+          ]
+        }
+      },
+      "id": "1581c677-df32-4e37-8b98-7c82c785b4d2",
+      "name": "Check Down",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -592,
+        1168
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "monitoring_logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit#gid=0"
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "url",
+              "fieldValue": "={{ $('Prepare URLs1').item.json.url }}"
+            },
+            {
+              "fieldId": "ts_utc",
+              "fieldValue": "={{ $json.ts_utc }}"
+            },
+            {
+              "fieldId": "ts_ist",
+              "fieldValue": "={{ $json.ts_ist }}"
+            },
+            {
+              "fieldId": "http_code",
+              "fieldValue": "={{ $json.http_code }}"
+            },
+            {
+              "fieldId": "error",
+              "fieldValue": "={{ $json.error }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "={{ $json.status }}"
+            },
+            {
+              "fieldId": "response_ms",
+              "fieldValue": "={{ $json.response_s }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e7c05c5b-9b84-4133-a5e8-b28d70f0ec31",
+      "name": "Log to Google Sheets2",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 3,
+      "position": [
+        -592,
+        976
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => ({\n  json: { \n    ...item.json, \n    __startTime: Date.now(), \n    originalUrl: item.json.url   // keep a copy\n  }\n}));\n"
+      },
+      "id": "a884082e-0158-4aca-bd09-3bce8f4084c4",
+      "name": "Add Start Time",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1264,
+        1072
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "e66591fc-f894-4a31-9d6c-f40646c2395c",
+      "name": "Cron1",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1712,
+        1072
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {json: {url: \"https://nytimes.com\"}},\n  {json: {url: \"https://bbc.co.uk\"}},\n  {json: {url: \"https://cnn.com\"}},\n  {json: {url: \"https://irctc.co.in\"}},\n  {json: {url: \"https://wikipedia.org\"}},\n  {json: {url: \"https://theguardian.com\"}},\n  {json: {url: \"https://stackoverflow.com\"}},\n  {json: {url: \"https://ndtv.com\"}},\n  {json: {url: \"https://example.invalid\"}},\n  {json: {url: \"https://no-such-host.invalid\"}}\n];"
+      },
+      "id": "299843bb-5f1b-45d3-aac1-d35f4a87ebf0",
+      "name": "Prepare URLs1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1488,
+        1072
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{$json.url}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
+            }
+          ]
+        },
+        "options": {
+          "redirect": {
+            "redirect": {
+              "maxRedirects": 5
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "64bec03b-d9d1-41fe-a72d-2cb1f6701b41",
+      "name": "HTTP Request - Check URL3",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -1040,
+        1072
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = [];\nconst nowUtc = new Date();\nconst nowIst = new Date(nowUtc.getTime() + 5.5 * 60 * 60 * 1000);\n\n// Original URLs\nconst prepareUrls = $('Prepare URLs1').all();\n// Start times from Add Start Time node\nconst startTimes = $('Add Start Time').all();\n\nfor (const [i, item] of $input.all().entries()) {\n  let httpCode = null;\n  let status = 'Down';\n  let error = '';\n  let finalUrl = prepareUrls[i].json.url; // default = original url\n\n  // Calculate response_ms using Add Start Time\n  let responseMs = startTimes[i]?.json?.__startTime\n    ? Date.now() - startTimes[i].json.__startTime\n    : null;\n\n  // Convert to seconds (human readable)\n  let responseSec = responseMs !== null ? (responseMs / 1000).toFixed(2) + \"s\" : null;\n\n  if (item.json.statusCode) {\n    httpCode = item.json.statusCode;\n    status = httpCode < 400 ? 'Up' : 'Down';\n\n    // If 3xx → use redirected URL\n    if (httpCode >= 300 && httpCode < 400 && item.json.url) {\n      finalUrl = item.json.url;\n    }\n  } else if (item.json.error) {\n    httpCode = item.json.error.status || item.json.error.code || null;\n    error = item.json.error.message || item.json.error || 'Unknown Error';\n    status = 'Down';\n    finalUrl = \"\";   // blank if error\n  }\n\n  results.push({\n    json: {\n      url: prepareUrls[i].json.url,\n      ts_utc: nowUtc.toISOString(),\n      ts_ist: nowIst.toISOString(),\n      status,\n      response_ms: responseMs,\n      response_s: responseSec,\n      http_code: httpCode,\n      error,\n      final_url: finalUrl\n    }\n  });\n}\n\nreturn results;\n"
+      },
+      "id": "fb1b4615-bef1-4b20-b8da-98e77532dc1d",
+      "name": "Process Result1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -816,
+        1072
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "83500779-9b68-46d6-9e7c-faded6e918e6",
+      "name": "Schedule Monday 9 AM IST",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1680,
+        1472
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Calculate date range for last 7 days\nconst now = new Date();\n// Convert to IST\nconst istNow = new Date(now.getTime() + (5.5 * 60 * 60 * 1000));\n\n// Get 7 days ago\nconst sevenDaysAgo = new Date(istNow.getTime() - (7 * 24 * 60 * 60 * 1000));\n\n// Format dates for filtering\nconst startDate = sevenDaysAgo.toISOString();\nconst endDate = istNow.toISOString();\n\nreturn [{\n  startDate: startDate,\n  endDate: endDate,\n  reportDate: istNow.toISOString().split('T')[0],\n  istTime: istNow.toISOString()\n}];"
+      },
+      "id": "e01ffc70-59d3-43f4-9230-ba0ed7e0939b",
+      "name": "Calculate Date Range",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1456,
+        1472
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "monitoring_logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit#gid=0"
+        },
+        "options": {}
+      },
+      "id": "1d2fbbbf-a8b7-428d-bf35-268cd2e67ee6",
+      "name": "Read Last 7 Days Data",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        -1232,
+        1472
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Filter data for last 7 days and calculate metrics\nconst startDate = $node[\"Calculate Date Range\"].json.startDate;\nconst endDate = $node[\"Calculate Date Range\"].json.endDate;\nconst reportDate = $node[\"Calculate Date Range\"].json.reportDate;\n\n// Get all sheet data (skip header row)\nconst allData = $input.all().slice(1);\n\n// Filter data for last 7 days\nconst last7DaysData = allData.filter(item => {\n  const rowDate = new Date(item.json.ts_utc);  // ✅ Always use UTC for filtering\n  return rowDate >= new Date(startDate) && rowDate <= new Date(endDate);\n});\n\n\n\n// Group data by URL\nconst urlGroups = {};\nconst urls = [\n  \"https://nytimes.com\",\n  \"https://bbc.co.uk\", \n  \"https://cnn.com\",\n  \"https://irctc.co.in\",\n  \"https://wikipedia.org\",\n  \"https://theguardian.com\",\n  \"https://stackoverflow.com\",\n  \"https://ndtv.com\",\n  \"https://example.invalid\",\n  \"https://no-such-host.invalid\"\n];\n\n// Initialize groups\nurls.forEach(url => {\n  urlGroups[url] = {\n    url: url,\n    totalChecks: 0,\n    upChecks: 0,\n    downChecks: 0,\n    totalResponseTime: 0,\n    responseTimes: [],\n    downtimeIncidents: 0,\n    longestDowntime: 0,\n    currentDowntimeStart: null,\n    downtimes: []\n  };\n});\n\n// Process each data point\nlast7DaysData.forEach(item => {\n  const url = item.json.url;\n  const status = item.json.status;\n  const responseTime = parseInt(item.json.response_ms) || 0;\n  const timestamp = new Date(item.json.ts_ist);\n  \n  if (urlGroups[url]) {\n    urlGroups[url].totalChecks++;\n    \n    if (status === 'Up') {\n      urlGroups[url].upChecks++;\n      urlGroups[url].totalResponseTime += responseTime;\n      urlGroups[url].responseTimes.push(responseTime);\n      \n      // End current downtime if exists\n      if (urlGroups[url].currentDowntimeStart) {\n        const downtimeDuration = timestamp - urlGroups[url].currentDowntimeStart;\n        urlGroups[url].downtimes.push(downtimeDuration);\n        urlGroups[url].currentDowntimeStart = null;\n      }\n    } else {\n      urlGroups[url].downChecks++;\n      \n      // Start new downtime if not already started\n      if (!urlGroups[url].currentDowntimeStart) {\n        urlGroups[url].currentDowntimeStart = timestamp;\n        urlGroups[url].downtimeIncidents++;\n      }\n    }\n  }\n});\n\n// Calculate final metrics\nconst metrics = [];\nconst csvData = [];\n\nObject.values(urlGroups).forEach(group => {\n  const uptimePercentage = group.totalChecks > 0 ? \n    ((group.upChecks / group.totalChecks) * 100).toFixed(2) : '0.00';\n  \n  const avgResponseTime = group.responseTimes.length > 0 ? \n    Math.round(group.totalResponseTime / group.responseTimes.length) : 0;\n  \n  // Calculate longest downtime\n  let longestDowntimeMs = 0;\n  if (group.downtimes.length > 0) {\n    longestDowntimeMs = Math.max(...group.downtimes);\n  }\n  \n  // If currently down, calculate current downtime\n  if (group.currentDowntimeStart) {\n    const currentDowntime = new Date() - group.currentDowntimeStart;\n    longestDowntimeMs = Math.max(longestDowntimeMs, currentDowntime);\n  }\n  \n  const longestDowntimeMinutes = Math.round(longestDowntimeMs / (1000 * 60));\n  \n  metrics.push({\n    url: group.url,\n    uptimePercentage: uptimePercentage,\n    avgResponseTime: avgResponseTime,\n    downtimeIncidents: group.downtimeIncidents,\n    longestDowntimeMinutes: longestDowntimeMinutes,\n    totalChecks: group.totalChecks,\n    upChecks: group.upChecks,\n    downChecks: group.downChecks\n  });\n});\n\n// Prepare CSV data (copy of filtered raw data)\nlast7DaysData.forEach(item => {\n  csvData.push({\n    url: item.json.url,\n    ts_utc: item.json.ts_utc,\n    ts_ist: item.json.ts_ist,\n    status: item.json.status,\n    response_ms: item.json.response_ms,\n    http_code: item.json.http_code,\n    error: item.json.error || '',\n    final_url: item.json.final_url\n  });\n});\n\nreturn [{\n  metrics: metrics,\n  csvData: csvData,\n  reportDate: reportDate,\n  startDate: startDate,\n  endDate: endDate,\n  totalDataPoints: last7DaysData.length\n}];"
+      },
+      "id": "9fab6741-2091-4b60-9390-905ac636f306",
+      "name": "Calculate Weekly Metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1024,
+        1488
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generate CSV content for attachment\nconst csvData = $json.csvData;\n\n// CSV Headers\nconst headers = ['url', 'ts_utc', 'ts_ist', 'status', 'response_ms', 'http_code', 'error', 'final_url'];\n\n// Convert to CSV format\nlet csvContent = headers.join(',') + '\\n';\n\ncsvData.forEach(row => {\n  const csvRow = [\n    `\"${row.url}\"`,\n    `\"${row.ts_utc}\"`,\n    `\"${row.ts_ist}\"`,\n    `\"${row.status}\"`,\n    row.response_ms,\n    row.http_code,\n    `\"${row.error}\"`,\n    `\"${row.final_url}\"`\n  ].join(',');\n  \n  csvContent += csvRow + '\\n';\n});\n\nreturn [{\n  ...($json),\n  csvContent: csvContent,\n  csvFileName: `uptime_report_${$json.reportDate}.csv`\n}];"
+      },
+      "id": "b055dc21-54a8-47b5-99a3-11fb63946b79",
+      "name": "Generate CSV Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -816,
+        1472
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generate HTML email report\nconst metrics = $json.metrics;\nconst reportDate = $json.reportDate;\nconst totalDataPoints = $json.totalDataPoints;\n\n// Calculate overall stats\nlet totalUptime = 0;\nlet totalIncidents = 0;\nlet totalChecks = 0;\nlet totalUp = 0;\n\nmetrics.forEach(m => {\n  totalChecks += m.totalChecks;\n  totalUp += m.upChecks;\n  totalIncidents += m.downtimeIncidents;\n});\n\nconst overallUptime = totalChecks > 0 ? ((totalUp / totalChecks) * 100).toFixed(2) : '0.00';\n\n// Generate table rows\nlet tableRows = '';\nmetrics.forEach(metric => {\n  const statusIcon = parseFloat(metric.uptimePercentage) >= 99 ? '🟢' : \n                    parseFloat(metric.uptimePercentage) >= 95 ? '🟡' : '🔴';\n  \n  tableRows += `\n  <tr>\n    <td style=\"padding: 8px; border: 1px solid #ddd;\">${statusIcon} ${metric.url}</td>\n    <td style=\"padding: 8px; border: 1px solid #ddd; text-align: center;\">${metric.uptimePercentage}%</td>\n    <td style=\"padding: 8px; border: 1px solid #ddd; text-align: center;\">${metric.avgResponseTime}ms</td>\n    <td style=\"padding: 8px; border: 1px solid #ddd; text-align: center;\">${metric.downtimeIncidents}</td>\n    <td style=\"padding: 8px; border: 1px solid #ddd; text-align: center;\">${metric.longestDowntimeMinutes}min</td>\n    <td style=\"padding: 8px; border: 1px solid #ddd; text-align: center;\">${metric.totalChecks}</td>\n  </tr>`;\n});\n\nconst emailContent = `\n<html>\n<head>\n  <style>\n    body { font-family: Arial, sans-serif; margin: 20px; }\n    .header { background: #f4f4f4; padding: 20px; border-radius: 5px; margin-bottom: 20px; }\n    .summary { background: #e8f5e8; padding: 15px; border-radius: 5px; margin-bottom: 20px; }\n    table { width: 100%; border-collapse: collapse; margin: 20px 0; }\n    th { background: #4CAF50; color: white; padding: 10px; border: 1px solid #ddd; }\n    .footer { margin-top: 30px; font-size: 12px; color: #666; }\n  </style>\n</head>\n<body>\n  <div class=\"header\">\n    <h1>📊 Website Uptime Weekly Report</h1>\n    <p><strong>Report Date:</strong> ${reportDate}</p>\n    <p><strong>Monitoring Period:</strong> Last 7 Days</p>\n  </div>\n  \n  <div class=\"summary\">\n    <h2>📈 Overall Summary</h2>\n    <ul>\n      <li><strong>Overall Uptime:</strong> ${overallUptime}%</li>\n      <li><strong>Total Incidents:</strong> ${totalIncidents}</li>\n      <li><strong>Total Checks:</strong> ${totalChecks}</li>\n      <li><strong>Data Points:</strong> ${totalDataPoints}</li>\n    </ul>\n  </div>\n  \n  <h2>🌐 Website Performance Details</h2>\n  <table>\n    <tr>\n      <th>Website</th>\n      <th>Uptime %</th>\n      <th>Avg Response Time</th>\n      <th>Downtime Incidents</th>\n      <th>Longest Downtime</th>\n      <th>Total Checks</th>\n    </tr>\n    ${tableRows}\n  </table>\n  \n  <div class=\"footer\">\n    <hr>\n    <p>🟢 Excellent (≥99%) | 🟡 Good (≥95%) | 🔴 Needs Attention (<95%)</p>\n    <p><strong>Note:</strong> Raw monitoring data is attached as CSV file for detailed analysis.</p>\n    <p><small>This report was automatically generated by your Website Uptime Monitor on ${new Date().toLocaleString('en-IN', {timeZone: 'Asia/Kolkata'})} IST</small></p>\n  </div>\n</body>\n</html>\n`;\n\nreturn [{\n  ...($json),\n  emailContent: emailContent,\n  emailSubject: `📊 Weekly Uptime Report - ${reportDate} (Overall: ${overallUptime}%)`\n}];"
+      },
+      "id": "1b5922d8-c116-419e-9b42-4a251cc503a7",
+      "name": "Generate Email Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -592,
+        1456
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "alerts@example.com",
+        "subject": "={{$json.emailSubject}}",
+        "message": "={{$json.emailContent}}",
+        "options": {}
+      },
+      "id": "888a982e-c17d-4a94-a348-6c69c31a1a53",
+      "name": "Send Weekly Report Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -352,
+        1472
+      ],
+      "webhookId": "0c604195-de30-4c00-a26a-133e4036fe8b",
+      "credentials": {
+        "gmailOAuth2": {
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Check Quiet Hours": {
+      "main": [
+        [
+          {
+            "node": "Check Not Quiet Hours",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Not Quiet Hours": {
+      "main": [
+        [
+          {
+            "node": "Send Alert Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Down": {
+      "main": [
+        [
+          {
+            "node": "Check Quiet Hours",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Start Time": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Check URL3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cron1": {
+      "main": [
+        [
+          {
+            "node": "Prepare URLs1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare URLs1": {
+      "main": [
+        [
+          {
+            "node": "Add Start Time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Check URL3": {
+      "main": [
+        [
+          {
+            "node": "Process Result1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Result1": {
+      "main": [
+        [
+          {
+            "node": "Log to Google Sheets2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check Down",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Monday 9 AM IST": {
+      "main": [
+        [
+          {
+            "node": "Calculate Date Range",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Date Range": {
+      "main": [
+        [
+          {
+            "node": "Read Last 7 Days Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Last 7 Days Data": {
+      "main": [
+        [
+          {
+            "node": "Calculate Weekly Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Weekly Metrics": {
+      "main": [
+        [
+          {
+            "node": "Generate CSV Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate CSV Content": {
+      "main": [
+        [
+          {
+            "node": "Generate Email Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Email Content": {
+      "main": [
+        [
+          {
+            "node": "Send Weekly Report Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}

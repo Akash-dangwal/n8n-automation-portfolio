@@ -1,0 +1,293 @@
+{
+  "name": "AI Resume Customizer",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "AI Resume Customization",
+        "formDescription": "Upload your resume (PDF) or paste resume text, along with the Job Description to generate a customized ATS-friendly resume.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Resume Text",
+              "fieldType": "textarea"
+            },
+            {
+              "fieldLabel": "Upload Resume (PDF)",
+              "fieldType": "file",
+              "acceptFileTypes": ".pdf"
+            },
+            {
+              "fieldLabel": "Job Description",
+              "fieldType": "textarea",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {
+          "appendAttribution": false,
+          "buttonLabel": "Generate Resume",
+          "path": "ai-resume-form",
+          "ignoreBots": false,
+          "useWorkflowTimezone": true
+        }
+      },
+      "id": "42de4897-6dcd-40c7-8d3a-dc7d62657a54",
+      "name": "On form submission",
+      "type": "n8n-nodes-base.formTrigger",
+      "position": [
+        1248,
+        2656
+      ],
+      "typeVersion": 2.2,
+      "webhookId": "fc96936e-3eaa-494e-b438-e23352dee91c"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"Resume Text\"]}}",
+              "operation": "isEmpty"
+            }
+          ]
+        }
+      },
+      "id": "cec8d1c4-5c56-4a39-943e-e82462a3d9f6",
+      "name": "If Resume Text Empty?",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        1520,
+        2672
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "=Upload_Resume__PDF_",
+        "options": {}
+      },
+      "id": "3c617503-1c78-4266-8440-f48ed26c1d6a",
+      "name": "Extract from File",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        1712,
+        2544
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "prompt",
+              "value": "=You are an expert resume writer and ATS optimizer.\n\nTASK:\nTake the candidate’s resume (provided below) and the job description. \nUpgrade the resume into a customized, ATS-friendly version that:\n- Preserves all key details from the candidate’s resume.\n- Rewrites bullets to include **keywords, skills, and responsibilities from the Job Description** wherever relevant.\n- Highlights strategy, consulting, project management, research, stakeholder management, and healthcare expertise if present in the JD.\n- Removes irrelevant or redundant details not useful for the target role.\n- Uses <h1> for name, <div class=\"meta\"> for contact/location links.\n- Uses <h2> for section headings: Summary, Skills, Experience, Education, Certifications, Projects.\n- Uses <ul><li> for bullets (max 6 per role).\n- Keeps everything professional, ATS-scannable, and within 1–2 pages.\n- Return VALID MINIMAL HTML ONLY (no <html>, <head>, or <body> tags).\n\nJOB DESCRIPTION:\n{{ $('On form submission').item.json['Job Description'] }}\n\nCANDIDATE RESUME (verbatim):\n{{ $('On form submission').item.json['Resume Text'] ? $('On form submission').item.json['Resume Text'] : ($('Extract from File').item.json['text'] || \"\")  }}\n"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0b11d679-da35-4c35-a7a5-afc91fda0f20",
+      "name": "Prepare Inputs",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        2672
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.pdfshift.io/v3/convert/pdf",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\nJSON.stringify({\nsource: $json[\"htmlContent\"],\nlandscape: false,\nuse_print: false\n})\n}}",
+        "options": {
+          "response": {
+            "response": {}
+          }
+        }
+      },
+      "id": "ceade172-8ff9-4d75-9450-e5a21ff95465",
+      "name": "HTTP Request (PDFShift)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2512,
+        2672
+      ],
+      "credentials": {
+        "httpBasicAuth": {
+          "name": "HTTP Basic Auth"
+        },
+        "httpHeaderAuth": {
+          "name": "PDFShift API key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "htmlContent",
+              "value": "=<html>\n  <head>\n    <meta charset=\"utf-8\" />\n    <title>Customized Resume</title>\n    <style>\n      @page { margin: 24mm; }\n      body { font-family: Arial, sans-serif; line-height: 1.45; font-size: 11pt; color: #111; }\n      .resume {\n        max-width: 800px;\n        margin: 0 auto;\n        white-space: pre-wrap;\n        overflow-wrap: anywhere;\n        word-break: break-word;\n        hyphens: auto;\n      }\n      h1,h2,h3 { margin: 0 0 8px; line-height: 1.2; }\n      h1 { font-size: 18pt; }\n      h2 { font-size: 14pt; margin-top: 18px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }\n      h3 { font-size: 12pt; margin-top: 12px; }\n      ul { margin: 6px 0 12px 18px; padding: 0; }\n      li { margin: 0 0 6px; }\n      .meta { font-size: 10pt; color: #444; }\n      h2, h3, .section { page-break-inside: avoid; }\n    </style>\n  </head>\n  <body>\n    <div class=\"resume\">\n      {{ $json.message.content }}\n    </div>\n  </body>\n</html>\n"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "844d5c47-ccb6-4101-9cfc-062d613d5185",
+      "name": "Wrap as HTML1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        2336,
+        2672
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "respondWith": "returnBinary",
+        "completionTitle": "Customized Resume Ready",
+        "completionMessage": "Your customized resume has been generated successfully.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 1,
+      "position": [
+        2672,
+        2544
+      ],
+      "id": "35b6a790-d776-4947-91f7-68265806657b",
+      "name": "Form",
+      "webhookId": "4f146573-e93a-49b5-adab-547bed6d6140"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{$json[\"prompt\"]}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        2064,
+        2608
+      ],
+      "id": "ef86adbe-2828-48f2-8be0-8ef8661117d7",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "name": "OpenAI account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "If Resume Text Empty?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Resume Text Empty?": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Inputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Prepare Inputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Inputs": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request (PDFShift)": {
+      "main": [
+        [
+          {
+            "node": "Form",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wrap as HTML1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request (PDFShift)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Wrap as HTML1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}

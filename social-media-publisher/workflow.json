@@ -1,0 +1,1244 @@
+{
+  "name": "Social Media Publisher (FB / IG Reels / YouTube)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "d0bd7f8c-087f-446b-b2d7-28d22847f6bc",
+      "name": "Daily 5:30 PM Trigger (IST)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -3456,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SCHEDULE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "SOCIAL MEDIA POST AUTOMATION DATA",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_SCHEDULE_SHEET_ID/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1161132888,
+          "mode": "list",
+          "cachedResultName": "Posts",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_SCHEDULE_SHEET_ID/edit#gid=1161132888"
+        },
+        "options": {}
+      },
+      "id": "ada63ce8-430e-423d-b30b-3a9d18b8ba98",
+      "name": "Read Social Media Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -3232,
+        416
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "console.log(\"=== CHECKING SHEET FOR SCHEDULED POSTS ===\");\n\n// Get current IST time\nconst currentTime = new Date();\nconst istOffset = 5.5 * 60;\nconst utc = currentTime.getTime() + (currentTime.getTimezoneOffset() * 60 * 1000);\nconst istTime = new Date(utc + (istOffset * 60 * 1000));\n\nconst currentHour = istTime.getHours();\nconst currentMinute = istTime.getMinutes();\nconst currentTimeString = `${currentHour}:${currentMinute.toString().padStart(2, '0')}`;\n\nconsole.log(`Current IST Time: ${istTime.toISOString()}`);\nconsole.log(`Current Time String: ${currentTimeString}`);\n\nconst allItems = $input.all();\nconsole.log(`Total items received: ${allItems.length}`);\n\nif (allItems.length === 0) {\n  console.log(\"❌ NO ITEMS FOUND IN INPUT!\");\n  return [];\n}\n\n// Filter items that should be posted now\nconst itemsToPost = allItems.filter(item => {\n  const postAction = item.json['Post Action'];\n  const scheduleTime = item.json['SCHEDULE TIME']; \n  const progress = item.json['Progress'];\n  const clientName = item.json['Client Name'];\n  \n  console.log(`\\n--- Checking Item: ${clientName} ---`);\n  console.log(`Post Action: \"${postAction}\"`);\n  console.log(`Schedule Time: \"${scheduleTime}\"`);\n  console.log(`Progress: \"${progress}\"`);\n  \n  // STOP if Progress is already \"Posted\"\n  if (progress === 'Posted') {\n    console.log(`❌ Already posted - skipping`);\n    return false;\n  }\n  \n  // Check if Post Action is \"Post\" (not \"Schedule\")\n  const shouldPost = postAction === 'Post';\n  if (!shouldPost) {\n    console.log(`❌ Post Action is \"${postAction}\", not \"Post\"`);\n    return false;\n  }\n  \n  // Parse and check schedule time\n  let isTimeToPost = false;\n  if (scheduleTime) {\n    // Handle different time formats from your sheet\n    let timeString = scheduleTime;\n    \n    // If it's in format \"23:59:00\", extract just \"23:59\"\n    if (timeString.includes(':') && timeString.split(':').length === 3) {\n      const timeParts = timeString.split(':');\n      timeString = `${timeParts[0]}:${timeParts[1]}`;\n    }\n    \n    console.log(`Cleaned schedule time: \"${timeString}\"`);\n    \n    if (timeString.includes(':')) {\n      const [scheduleHour, scheduleMinute] = timeString.split(':').map(Number);\n      \n      // Check if current time is within 30 minutes of scheduled time\n      const scheduledTotalMinutes = scheduleHour * 60 + scheduleMinute;\n      const currentTotalMinutes = currentHour * 60 + currentMinute;\n      const timeDifference = Math.abs(currentTotalMinutes - scheduledTotalMinutes);\n      \n      // Post if we're within 30 minutes of scheduled time\n      isTimeToPost = scheduleHour === currentHour && scheduleMinute === currentMinute;\n\n      \n      console.log(`Scheduled: ${scheduleHour}:${scheduleMinute.toString().padStart(2, '0')}`);\n      console.log(`Time difference: ${timeDifference} minutes`);\n      console.log(`Is time to post: ${isTimeToPost}`);\n    }\n  }\n  \n  // Check if there's content to post\n  const hasContent = item.json['Facebook content'] || item.json['Insta content'] || item.json['Youtube content'];\n  \n  const shouldProcessItem = shouldPost && isTimeToPost && hasContent;\n  \n  console.log(`Should process: ${shouldProcessItem}`);\n  console.log(`  - Should post: ${shouldPost}`);\n  console.log(`  - Is time to post: ${isTimeToPost}`);\n  console.log(`  - Has content: ${hasContent}`);\n  console.log(`  - Progress not \"Posted\": ${progress !== 'Posted'}`);\n  \n  return shouldProcessItem;\n});\n\nconsole.log(`\\n=== FINAL RESULT ===`);\nconsole.log(`Items to post now: ${itemsToPost.length}`);\n\nif (itemsToPost.length > 0) {\n  itemsToPost.forEach((item, index) => {\n    console.log(`${index + 1}. ${item.json['Client Name']} - ${item.json['SCHEDULE TIME']}`);\n  });\n}\n\nreturn itemsToPost;"
+      },
+      "id": "580b134b-9dbb-4e88-990f-3ee59b0cc830",
+      "name": "Filter Posts to Publish (IST)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3008,
+        416
+      ],
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "condition1",
+              "leftValue": "={{ $json }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1c26caf-d058-41f9-81a4-afb6bbab0d54",
+      "name": "Check If Posts Exist",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -2784,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "condition1",
+              "leftValue": "={{ $json['Reel Link'] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "isNotEmpty"
+              }
+            },
+            {
+              "id": "ba2e69f9-1261-4171-b855-18950f4e522a",
+              "leftValue": "={{ $json['Reel Link '] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "ebbf9ca9-8f45-40be-8dca-3c1f3fc96b03",
+      "name": "Check Reel Link",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -2560,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "= {{ $json['Reel Link '] }}",
+          "mode": "url"
+        },
+        "options": {}
+      },
+      "id": "8c295208-4943-4030-945c-c4b137822e20",
+      "name": "Download Video from Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -2112,
+        288
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "condition1",
+              "leftValue": "={{ $json['Cover Image Uri'] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "isNotEmpty"
+              }
+            },
+            {
+              "id": "8358bc7e-cb0f-485a-9a88-fac91be72ebf",
+              "leftValue": "={{ $json['Cover Image Url'] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "3d62257b-22b8-432e-8a2a-3528d44cfd82",
+      "name": "Check Thumbnail Link",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -2336,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json['Cover Image Url'] }}",
+          "mode": "url"
+        },
+        "options": {}
+      },
+      "id": "77f511a0-83a3-4091-b1e8-ba9e56cc91bc",
+      "name": "Download Thumbnail from Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -2080,
+        608
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -1888,
+        416
+      ],
+      "id": "26f61367-738c-4d59-9b10-645d17a856a9",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "httpRequestMethod": "POST",
+        "graphApiVersion": "v22.0",
+        "node": "me",
+        "edge": "videos",
+        "sendBinaryData": true,
+        "binaryPropertyName": "data",
+        "options": {
+          "queryParameters": {
+            "parameter": [
+              {
+                "name": "description",
+                "value": "={{ $json.facebookContent }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.facebookGraphApi",
+      "typeVersion": 1,
+      "position": [
+        352,
+        112
+      ],
+      "id": "da1e5a03-fa56-4707-9102-c82469b5071c",
+      "name": "Facebook Graph API",
+      "notesInFlow": false,
+      "credentials": {
+        "facebookGraphApi": {
+          "name": "Facebook Graph API account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpRequestMethod": "POST",
+        "graphApiVersion": "v22.0",
+        "node": "YOUR_IG_BUSINESS_ACCOUNT_ID",
+        "edge": "media",
+        "options": {
+          "queryParameters": {
+            "parameter": [
+              {
+                "name": "video_url",
+                "value": "={{ $json.Post_url }}"
+              },
+              {
+                "name": "media_type",
+                "value": "REELS"
+              },
+              {
+                "name": "caption",
+                "value": "={{ $json.Caption }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.facebookGraphApi",
+      "typeVersion": 1,
+      "position": [
+        -752,
+        432
+      ],
+      "id": "1b3c48ab-69a4-4723-8943-97527ceb6374",
+      "name": "create insta container",
+      "credentials": {
+        "facebookGraphApi": {
+          "name": "Facebook Graph API account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 20
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -528,
+        384
+      ],
+      "id": "cd3bb062-1ab8-47f7-a3e6-02917298a98d",
+      "name": "Wait",
+      "webhookId": "3fb7deca-702f-478f-a976-ca70a8690646"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.cloudinary.com/v1_1/YOUR_CLOUD_NAME/video/upload",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "upload_preset",
+              "value": "YOUR_UPLOAD_PRESET"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1184,
+        432
+      ],
+      "id": "d545eaff-6c45-49b8-8efa-743f5a96b713",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "resource": "video",
+        "operation": "upload",
+        "title": "Abcs",
+        "regionCode": "IN",
+        "categoryId": "24",
+        "options": {
+          "privacyStatus": "public"
+        }
+      },
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [
+        -528,
+        784
+      ],
+      "id": "13a90f4a-98c8-4f7e-a087-e19ca7c8a644",
+      "name": "Upload a video",
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "name": "YouTube account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId={{ $node[\"Upload a video\"].json[\"uploadId\"] }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "youTubeOAuth2Api",
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        352,
+        656
+      ],
+      "id": "a75bc154-80a2-4674-bed7-a71e1b257997",
+      "name": "HTTP Request1",
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "name": "YouTube account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $('YT').item.json.thumbnailUrl }}",
+          "mode": "url"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -96,
+        624
+      ],
+      "id": "a627f12c-8b94-4106-8f68-38d23f58e47b",
+      "name": "Download file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "borderWidth": 2,
+        "borderHeight": 2,
+        "options": {
+          "format": "jpeg"
+        }
+      },
+      "type": "n8n-nodes-base.editImage",
+      "typeVersion": 1,
+      "position": [
+        128,
+        656
+      ],
+      "id": "596b2450-e6fd-4cf9-a1d8-068713f8a655",
+      "name": "Edit Image"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract video ID from Facebook Graph API response\nconst videoId = $node[\"Facebook Graph API\"].json.id;\nconst pageId = \"YOUR_FB_PAGE_ID\"; // Your Facebook Page ID\n\n// Construct correct Facebook video URL\nconst facebookUrl = `https://www.facebook.com/${pageId}/videos/${videoId}`;\n\nreturn [{\n  json: {\n    ...items[0].json,\n    facebook_url: facebookUrl\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        576,
+        176
+      ],
+      "id": "324ae1a2-e45e-4631-af2e-4d5a50d66ec0",
+      "name": "Code1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nconst shortcode = $node[\"Get Instagram Shortcode\"].json.shortcode;\nconst permalink = $node[\"Get Instagram Shortcode\"].json.permalink;\n\nreturn [{\n  json: {\n    ...items[0].json,\n    instagram_url: permalink || `https://www.instagram.com/p/${shortcode}/`,\n    instagram_shortcode: shortcode\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        576,
+        416
+      ],
+      "id": "80195f2d-e73d-4373-a2d2-d9c6cf04c663",
+      "name": "Code2"
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v18.0/{{$node[\"Facebook Graph API1\"].json.id}}?fields=shortcode,permalink",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        352,
+        416
+      ],
+      "id": "5662defe-8e06-4bfe-9420-39e2781dbe1a",
+      "name": "Get Instagram Shortcode",
+      "credentials": {
+        "facebookGraphApi": {
+          "name": "Facebook Graph API account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract video ID and create YouTube URL\nconst videoId = $('Upload a video').first().json.uploadId;\nconst youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;\n\nreturn [{\n  json: {\n    ...items[0].json,\n    youtube_url: youtubeUrl\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        576,
+        736
+      ],
+      "id": "75254806-aaeb-4498-af71-0ebc7fe42276",
+      "name": "Code3"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "numberInputs": 3,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        864,
+        288
+      ],
+      "id": "71ded22c-fe1f-4593-8566-3c69f0a862e8",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "46086707-ccad-4ba4-93d4-b60bb895deec",
+              "leftValue": "={{ $('Check Reel Link').item.json['Cover Image Url'] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -320,
+        736
+      ],
+      "id": "dd3029c1-6755-4304-a6d9-12d41e0cdad6",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "graphApiVersion": "v22.0",
+        "node": "={{ $json.id }}",
+        "options": {
+          "queryParameters": {
+            "parameter": [
+              {
+                "name": "fields",
+                "value": "status_code,status"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.facebookGraphApi",
+      "typeVersion": 1,
+      "position": [
+        -320,
+        352
+      ],
+      "id": "aabd69fb-b788-48e9-8f50-5e472d2e35b6",
+      "name": "Check Container Status",
+      "credentials": {
+        "facebookGraphApi": {
+          "name": "Facebook Graph API account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "condition1",
+              "leftValue": "={{ $json.status_code }}",
+              "rightValue": "FINISHED",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "condition2",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "FINISHED",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -80,
+        336
+      ],
+      "id": "2bee36da-6900-48d5-a60e-75eb9fcab03f",
+      "name": "Is Container Ready?"
+    },
+    {
+      "parameters": {
+        "hostUrl": "graph-video.facebook.com",
+        "httpRequestMethod": "POST",
+        "graphApiVersion": "v22.0",
+        "node": "YOUR_IG_BUSINESS_ACCOUNT_ID",
+        "edge": "=media_publish",
+        "options": {
+          "queryParameters": {
+            "parameter": [
+              {
+                "name": "creation_id",
+                "value": "={{ $json.id }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.facebookGraphApi",
+      "typeVersion": 1,
+      "position": [
+        144,
+        352
+      ],
+      "id": "8ca4b170-2cb0-4fce-b5c3-24a030f81366",
+      "name": "Facebook Graph API1",
+      "credentials": {
+        "facebookGraphApi": {
+          "name": "Facebook Graph API account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_LOG_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "InstaUrl",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_LOG_SHEET_ID/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_LOG_SHEET_ID/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Post_url": "={{ $json.secure_url }}",
+            "Caption": "={{ $('Check Reel Link').item.json['Insta content'] }}"
+          },
+          "matchingColumns": [
+            "Post_url"
+          ],
+          "schema": [
+            {
+              "id": "Post_url",
+              "displayName": "Post_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Caption",
+              "displayName": "Caption",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -992,
+        480
+      ],
+      "id": "f4ba91c8-4021-4ed2-bef0-cd6cc9786755",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SCHEDULE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "SOCIAL MEDIA POST AUTOMATION DATA",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_SCHEDULE_SHEET_ID/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1161132888,
+          "mode": "list",
+          "cachedResultName": "Posts",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_SCHEDULE_SHEET_ID/edit#gid=1161132888"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Facebook content": "={{ $('Filter Posts to Publish (IST)').item.json['Facebook content'] }}",
+            "Progress": "Posted",
+            "posted-FB": "={{ $json.facebook_url }}",
+            "posted-IG": "={{ $json.instagram_url }}",
+            "posted-YouTube": "={{ $json.youtube_url }}"
+          },
+          "matchingColumns": [
+            "Facebook content"
+          ],
+          "schema": [
+            {
+              "id": "Client Name",
+              "displayName": "Client Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Reel Link ",
+              "displayName": "Reel Link ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Facebook content",
+              "displayName": "Facebook content",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Insta content",
+              "displayName": "Insta content",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Youtube content",
+              "displayName": "Youtube content",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Cover Image Url",
+              "displayName": "Cover Image Url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Post Action",
+              "displayName": "Post Action",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "SCHEDULE TIME",
+              "displayName": "SCHEDULE TIME",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Progress",
+              "displayName": "Progress",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "posted-FB",
+              "displayName": "posted-FB",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "posted-IG",
+              "displayName": "posted-IG",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "posted-YouTube",
+              "displayName": "posted-YouTube",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        1440,
+        304
+      ],
+      "id": "590080f0-674a-4d80-82cf-7247afc03ff9",
+      "name": "Append or update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Daily 5:30 PM Trigger (IST)": {
+      "main": [
+        [
+          {
+            "node": "Read Social Media Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Social Media Sheet": {
+      "main": [
+        [
+          {
+            "node": "Filter Posts to Publish (IST)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Posts to Publish (IST)": {
+      "main": [
+        [
+          {
+            "node": "Check If Posts Exist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check If Posts Exist": {
+      "main": [
+        [
+          {
+            "node": "Check Reel Link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Reel Link": {
+      "main": [
+        [
+          {
+            "node": "Download Video from Drive",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check Thumbnail Link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Video from Drive": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Thumbnail Link": {
+      "main": [
+        [
+          {
+            "node": "Download Thumbnail from Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Thumbnail from Drive": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Facebook Graph API",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Upload a video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create insta container": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Check Container Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload a video": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file": {
+      "main": [
+        [
+          {
+            "node": "Edit Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Image": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Facebook Graph API": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Instagram Shortcode": {
+      "main": [
+        [
+          {
+            "node": "Code2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Code3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code2": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Code3": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Container Status": {
+      "main": [
+        [
+          {
+            "node": "Is Container Ready?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Container Ready?": {
+      "main": [
+        [
+          {
+            "node": "Facebook Graph API1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Facebook Graph API1": {
+      "main": [
+        [
+          {
+            "node": "Get Instagram Shortcode",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "create insta container",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}
