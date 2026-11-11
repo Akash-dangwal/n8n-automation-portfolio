@@ -27,9 +27,10 @@
           "appendAttribution": false,
           "buttonLabel": "Generate Resume",
           "path": "ai-resume-form",
-          "ignoreBots": false,
+          "ignoreBots": true,
           "useWorkflowTimezone": true
-        }
+        },
+        "authentication": "basicAuth"
       },
       "id": "42de4897-6dcd-40c7-8d3a-dc7d62657a54",
       "name": "On form submission",
@@ -39,7 +40,12 @@
         2656
       ],
       "typeVersion": 2.2,
-      "webhookId": "fc96936e-3eaa-494e-b438-e23352dee91c"
+      "webhookId": "fc96936e-3eaa-494e-b438-e23352dee91c",
+      "credentials": {
+        "httpBasicAuth": {
+          "name": "Form Basic Auth"
+        }
+      }
     },
     {
       "parameters": {

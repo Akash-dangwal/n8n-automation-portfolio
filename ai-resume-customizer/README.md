@@ -22,3 +22,9 @@ n8n Forms · Extract From File (PDF) · OpenAI · PDFShift · HTML/CSS
 ## Placeholders to replace
 
 Add your own OpenAI and PDFShift credentials after import.
+
+## Hardening notes
+
+The form is protected with **Basic Auth** and `ignoreBots` is on, so a public URL
+can't be used to burn OpenAI credits anonymously. For a real deployment also cap the
+resume/JD length before the model call and put the form behind a rate limiter or CAPTCHA.
