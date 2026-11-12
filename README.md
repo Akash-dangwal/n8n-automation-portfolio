@@ -8,9 +8,9 @@ explaining the problem, the flow and how to run it.
 | Workflow | What it does | Stack |
 |---|---|---|
 | [Social Media Publisher](./social-media-publisher) | Reads a schedule sheet and publishes videos to a Facebook Page, Instagram Reels and YouTube, then writes the live URLs back | Google Sheets · Drive · Meta Graph API · YouTube Data API · Cloudinary |
-| [Website Uptime Monitor](./website-uptime-monitor) | Checks a list of sites every 15 min, logs results, alerts on downtime (with quiet hours) and emails a weekly uptime report with CSV | HTTP · Google Sheets · Gmail · JavaScript |
+| [Website Uptime Monitor](./website-uptime-monitor) | Checks a list of sites every 15 min, logs results, alerts on downtime (with quiet hours) and emails a weekly uptime report with CSV. Technical assessment | HTTP · Google Sheets · Gmail · JavaScript |
 | [AI Video Generator](./veo3-video-generator) | Two Gemini agents invent a video idea and write a Veo 3 prompt; Vertex AI renders the clip, which is saved to Drive and logged | Gemini · Vertex AI Veo 3 · Google Drive · Sheets |
-| [AI Resume Customizer](./ai-resume-customizer) | Web form takes a resume (PDF or text) plus a job description and returns an ATS-friendly rewritten PDF | n8n Forms · OpenAI · PDFShift |
+| [AI Resume Customizer](./ai-resume-customizer) | Web form takes a resume (PDF or text) plus a job description and returns an ATS-friendly rewritten PDF. Technical assessment | n8n Forms · OpenAI · PDFShift |
 
 ## Importing a workflow
 

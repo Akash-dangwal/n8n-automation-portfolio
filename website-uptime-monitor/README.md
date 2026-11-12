@@ -3,6 +3,9 @@
 Two flows in one workflow: a 15-minute health check with downtime alerts, and a
 Monday-morning uptime report with a CSV attachment.
 
+Built as a take-home technical assessment for a hiring process, then kept as a
+reference implementation.
+
 ![Workflow canvas](./screenshot.png)
 
 ## Flow 1 — check every 15 minutes

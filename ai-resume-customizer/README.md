@@ -3,6 +3,8 @@
 A small web app built entirely in n8n: upload a resume, paste a job description,
 download an ATS-friendly rewritten resume as a PDF.
 
+Built as a take-home technical assessment for a hiring process.
+
 ![Workflow canvas](./screenshot.png)
 
 ## How it works
